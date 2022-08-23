@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useRef,
+  useMemo
+} from "react";
 import { Box } from "@mui/material";
 import moment from "moment";
 
@@ -104,6 +110,19 @@ export default function App() {
    */
   const calendarViewHeight = () =>
     windowSize.inner_height - windowSize.task_height - 48 - 20;
+
+  const lists = useMemo(() => {
+    let lists = [];
+    categories.forEach((category) => {
+      lists.push({ cat: "category", ...category });
+      tasks.forEach((task) => {
+        if (task.category_id === category.id) {
+          lists.push({ cat: "task", ...task });
+        }
+      });
+    });
+    return lists;
+  }, []);
 
   return (
     <Box id="app">
@@ -226,6 +245,103 @@ export default function App() {
               進捗
             </Box>
           </Box>
+          <Box id="gantt-task-list">
+            {lists.map((list, index) => (
+              <Box
+                key={index}
+                sx={{
+                  display: "flex",
+                  height: "2.5rem",
+                  borderBottomWidth: "1px"
+                }}
+              >
+                {list.cat === "category" ? (
+                  // カテゴリ
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: "700",
+                      width: "100%",
+                      fontSize: "0.875rem",
+                      lineHeight: "1.25rem",
+                      paddingLeft: "0.5rem"
+                    }}
+                  >
+                    {list.name}
+                  </Box>
+                ) : (
+                  // タスク
+                  <Box
+                    sx={{
+                      borderRightWidth: "1px",
+                      display: "flex",
+                      alignItems: "center",
+                      fontWeight: "700",
+                      width: "12rem",
+                      fontSize: "0.875rem",
+                      lineHeight: "1.25rem",
+                      paddingLeft: "1rem"
+                    }}
+                  >
+                    {list.name}
+                  </Box>
+                )}
+
+                <Box
+                  sx={{
+                    borderRightWidth: "1px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "6rem",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.25rem"
+                  }}
+                >
+                  {list.start_date}
+                </Box>
+                <Box
+                  sx={{
+                    borderRightWidth: "1px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "6rem",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.25rem"
+                  }}
+                >
+                  {list.end_date}
+                </Box>
+                <Box
+                  sx={{
+                    borderRightWidth: "1px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "4rem",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.25rem"
+                  }}
+                >
+                  {list.incharge_user}
+                </Box>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: "3rem",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.25rem"
+                  }}
+                >
+                  {list.percentage}%
+                </Box>
+              </Box>
+            ))}
+          </Box>
         </Box>
         <Box
           id="gantt-calendar"
@@ -266,38 +382,37 @@ export default function App() {
               {state.calendars?.map((calendar, index) => (
                 <Box key={index}>
                   {calendar.days?.map((day, index2) => (
-                    <Box key={index2}>
-                      <Box
-                        sx={{
-                          borderRightWidth: "1px",
-                          height: "3rem",
-                          position: "absolute",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexDirection: "column",
-                          fontWeight: "700",
-                          fontSize: "0.75rem",
-                          lineHeight: "1rem",
-                          width: `${state.block_size}px`,
-                          left: `${day.block_number * state.block_size}px`,
-                          backgroundColor:
-                            (calendar.year === state.today.year() &&
-                              calendar.month === state.today.month() &&
-                              day.day === state.today.date() &&
-                              "#DC2626") ||
-                            (day.dayOfWeek === "土" && "#DBEAFE") ||
-                            (day.dayOfWeek === "日" && "#FEE2E2"),
-                          color:
-                            calendar.year === state.today.year() &&
+                    <Box
+                      key={index2}
+                      sx={{
+                        borderRightWidth: "1px",
+                        height: "3rem",
+                        position: "absolute",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexDirection: "column",
+                        fontWeight: "700",
+                        fontSize: "0.75rem",
+                        lineHeight: "1rem",
+                        width: `${state.block_size}px`,
+                        left: `${day.block_number * state.block_size}px`,
+                        backgroundColor:
+                          (calendar.year === state.today.year() &&
                             calendar.month === state.today.month() &&
                             day.day === state.today.date() &&
-                            "#ffffff"
-                        }}
-                      >
-                        <Box component="span">{day.day}</Box>
-                        <Box component="span">{day.dayOfWeek}</Box>
-                      </Box>
+                            "#DC2626") ||
+                          (day.dayOfWeek === "土" && "#DBEAFE") ||
+                          (day.dayOfWeek === "日" && "#FEE2E2"),
+                        color:
+                          calendar.year === state.today.year() &&
+                          calendar.month === state.today.month() &&
+                          day.day === state.today.date() &&
+                          "#ffffff"
+                      }}
+                    >
+                      <Box component="span">{day.day}</Box>
+                      <Box component="span">{day.dayOfWeek}</Box>
                     </Box>
                   ))}
                 </Box>
@@ -307,34 +422,33 @@ export default function App() {
               {state.calendars?.map((calendar, index) => (
                 <Box key={index}>
                   {calendar.days?.map((day, index2) => (
-                    <Box key={index2}>
-                      <Box
-                        sx={{
-                          borderRightWidth: "1px",
-                          borderBottomWidth: "1px",
-                          position: "absolute",
-                          width: `${state.block_size}px`,
-                          left: `${day.block_number * state.block_size}px`,
-                          height: `${calendarViewHeight()}px`,
-                          backgroundColor:
-                            (day.dayOfWeek === "土" && "#DBEAFE") ||
-                            (day.dayOfWeek === "日" && "#FEE2E2")
-                        }}
-                      ></Box>
-                    </Box>
+                    <Box
+                      key={index2}
+                      sx={{
+                        borderRightWidth: "1px",
+                        borderBottomWidth: "1px",
+                        position: "absolute",
+                        width: `${state.block_size}px`,
+                        left: `${day.block_number * state.block_size}px`,
+                        height: `${calendarViewHeight()}px`,
+                        backgroundColor:
+                          (day.dayOfWeek === "土" && "#DBEAFE") ||
+                          (day.dayOfWeek === "日" && "#FEE2E2")
+                      }}
+                    ></Box>
                   ))}
                 </Box>
               ))}
             </Box>
-            <Box
-              id="gantt-bar-area"
-              sx={{
-                position: "relative",
-                width: `${calendarViewWidth()}px`,
-                height: `${calendarViewHeight()}px`
-              }}
-            ></Box>
           </Box>
+          <Box
+            id="gantt-bar-area"
+            sx={{
+              position: "relative",
+              width: `${calendarViewWidth()}px`,
+              height: `${calendarViewHeight()}px`
+            }}
+          ></Box>
         </Box>
       </Box>
     </Box>
@@ -360,3 +474,73 @@ function getDays(year, month, block_number) {
   }
   return days;
 }
+
+const categories = [
+  {
+    id: 1,
+    name: "テストA",
+    collapsed: false
+  },
+  {
+    id: 2,
+    name: "テストB",
+    collapsed: false
+  }
+];
+
+const tasks = [
+  {
+    id: 1,
+    category_id: 1,
+    name: "テスト1",
+    start_date: "2020-11-18",
+    end_date: "2020-11-20",
+    incharge_user: "鈴木",
+    percentage: 100
+  },
+  {
+    id: 2,
+    category_id: 1,
+    name: "テスト2",
+    start_date: "2020-11-19",
+    end_date: "2020-11-23",
+    incharge_user: "佐藤",
+    percentage: 90
+  },
+  {
+    id: 3,
+    category_id: 1,
+    name: "テスト3",
+    start_date: "2020-11-19",
+    end_date: "2020-12-04",
+    incharge_user: "鈴木",
+    percentage: 40
+  },
+  {
+    id: 4,
+    category_id: 1,
+    name: "テスト4",
+    start_date: "2020-11-21",
+    end_date: "2020-11-30",
+    incharge_user: "山下",
+    percentage: 60
+  },
+  {
+    id: 5,
+    category_id: 1,
+    name: "テスト5",
+    start_date: "2020-11-25",
+    end_date: "2020-12-04",
+    incharge_user: "佐藤",
+    percentage: 5
+  },
+  {
+    id: 6,
+    category_id: 2,
+    name: "テスト6",
+    start_date: "2020-11-28",
+    end_date: "2020-12-08",
+    incharge_user: "佐藤",
+    percentage: 0
+  }
+];
