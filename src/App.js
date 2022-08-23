@@ -4,11 +4,12 @@ import moment from "moment";
 
 export default function App() {
   const [state, setState] = useState({
-    start_month: "2020-10",
-    end_month: "2021-02",
+    start_month: "2022-04",
+    end_month: "2023-02",
     block_size: 30,
     block_number: 0,
-    calendars: []
+    calendars: [],
+    today: moment()
   });
 
   const [windowSize, setWindwoSize] = useState({
@@ -17,6 +18,9 @@ export default function App() {
     task_width: "",
     task_height: ""
   });
+
+  const taskRef = useRef();
+  const calendarRef = useRef();
 
   /**
    * 開始月と終了月の間の月数分のカレンダーを作成する
@@ -61,18 +65,31 @@ export default function App() {
     setWindwoSize({
       inner_width: window.innerWidth,
       inner_height: window.innerHeight,
-      task_width: task.current.offsetWidth,
-      task_height: task.current.offsetHeight
+      task_width: taskRef.current.offsetWidth,
+      task_height: taskRef.current.offsetHeight
     });
+  };
+
+  /**
+   * 本日の場所を設定するためにはstart_monthの1日から本日までに何日あるかを計算
+   * 日数にblock_sizeをかけることでカレンダー領域の左端からの距離を算出する
+   */
+  const scrollDistance = () => {
+    const start_date = moment(state.start_month);
+    const between_days = state.today.diff(start_date, "days");
+    return (between_days + 1) * state.block_size - calendarViewWidth() / 2;
+  };
+
+  const todayPosition = () => {
+    calendarRef.current.scrollLeft = scrollDistance();
   };
 
   useEffect(() => {
     getCalendar();
     getWindowSize();
+    todayPosition();
     window.addEventListener("resize", getWindowSize);
   }, [getCalendar]);
-
-  const task = useRef();
 
   /**
    * カレンダー領域の幅を計算する
@@ -114,7 +131,7 @@ export default function App() {
         <Box id="gantt-task">
           <Box
             id="gantt-task-title"
-            ref={task}
+            ref={taskRef}
             sx={{
               display: "flex",
               alignItems: "center",
@@ -213,6 +230,7 @@ export default function App() {
         <Box
           id="gantt-calendar"
           sx={{ overflowX: "scroll", width: `${calendarViewWidth()}px` }}
+          ref={calendarRef}
         >
           <Box id="gantt-date" sx={{ height: "5rem" }}>
             <Box
@@ -264,8 +282,17 @@ export default function App() {
                           width: `${state.block_size}px`,
                           left: `${day.block_number * state.block_size}px`,
                           backgroundColor:
+                            (calendar.year === state.today.year() &&
+                              calendar.month === state.today.month() &&
+                              day.day === state.today.date() &&
+                              "#DC2626") ||
                             (day.dayOfWeek === "土" && "#DBEAFE") ||
-                            (day.dayOfWeek === "日" && "#FEE2E2")
+                            (day.dayOfWeek === "日" && "#FEE2E2"),
+                          color:
+                            calendar.year === state.today.year() &&
+                            calendar.month === state.today.month() &&
+                            day.day === state.today.date() &&
+                            "#ffffff"
                         }}
                       >
                         <Box component="span">{day.day}</Box>
@@ -299,17 +326,17 @@ export default function App() {
                 </Box>
               ))}
             </Box>
+            <Box
+              id="gantt-bar-area"
+              sx={{
+                position: "relative",
+                width: `${calendarViewWidth()}px`,
+                height: `${calendarViewHeight()}px`
+              }}
+            ></Box>
           </Box>
         </Box>
       </Box>
-      <Box
-        id="gantt-bar-area"
-        sx={{
-          position: "relative",
-          width: `${calendarViewWidth()}px`,
-          height: `${calendarViewHeight()}px`
-        }}
-      ></Box>
     </Box>
   );
 }
