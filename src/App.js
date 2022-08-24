@@ -22,7 +22,8 @@ export default function App() {
     inner_width: "",
     inner_height: "",
     task_width: "",
-    task_height: ""
+    task_height: "",
+    position_id: 0,
   });
 
   const taskRef = useRef();
@@ -68,13 +69,28 @@ export default function App() {
   }, [state.start_month, state.end_month]);
 
   const getWindowSize = () => {
-    setWindwoSize({
+    setWindwoSize((prev) => ({
+      ...prev,
       inner_width: window.innerWidth,
       inner_height: window.innerHeight,
       task_width: taskRef.current.offsetWidth,
       task_height: taskRef.current.offsetHeight
-    });
+    }))
   };
+
+  const windowSizeCheck = (event) => {
+    let height = lists.length - windowSize.position_id
+    let position_id = windowSize.position_id;
+    if (event.deltaY > 0 && height * 40 > calendarViewHeight()) {
+      position_id++;
+    } else if (event.deltaY < 0 && windowSize.position_id !== 0) {
+      position_id--;
+    }
+    setWindwoSize((prev) => ({
+      ...prev,
+      position_id: position_id,
+    }))
+  }
 
   /**
    * 本日の場所を設定するためにはstart_monthの1日から本日までに何日あるかを計算
@@ -95,6 +111,7 @@ export default function App() {
     getWindowSize();
     todayPosition();
     window.addEventListener("resize", getWindowSize);
+    window.addEventListener("wheel", windowSizeCheck);
   }, [getCalendar]);
 
   /**
@@ -123,6 +140,45 @@ export default function App() {
     });
     return lists;
   }, []);
+
+  
+  const displayTasks = useMemo(() => {
+    let display_task_number = Math.floor(calendarViewHeight() / 40);
+    return lists.slice(windowSize.position_id, windowSize.position_id + display_task_number);
+  })
+
+  const taskBars = useMemo(() => {
+    let start_date = moment(state.start_month);
+    let top = 10; // 各タスクバーに確保された高さの領域(h-10=2.5rem=40px)の上から10pxからタスクバーを表示させるために指定
+    let left;
+    let between;
+    let start;
+    let style;
+    return displayTasks.map(task => {
+      style = {}
+      if (task.cat === 'task') {
+        let date_from = moment(task.start_date);
+        let date_to = moment(task.end_date);
+        between = date_to.diff(date_from, 'days');
+        between++;
+        start = date_from.diff(start_date, 'days');
+        left = start * state.block_size;
+        style = {
+          top: `${top}px`,
+          left: `${left}px`,
+          width: `${state.block_size * between}px`,
+        }
+      }
+      // listsをループする毎にtopに40pxを足して、各タスクバーが確保した高さの10px下からタスクバーを表示する
+      top = top + 40;
+      return {
+        style,
+        task
+      }
+    })
+  })
+
+  console.log({taskBars})
 
   return (
     <Box id="app">
@@ -245,8 +301,8 @@ export default function App() {
               進捗
             </Box>
           </Box>
-          <Box id="gantt-task-list">
-            {lists.map((list, index) => (
+          <Box id="gantt-task-list" sx={{ overflowY: 'hidden', height: `${calendarViewHeight()}px` }}>
+            {displayTasks.map((task, index) => (
               <Box
                 key={index}
                 sx={{
@@ -255,7 +311,7 @@ export default function App() {
                   borderBottomWidth: "1px"
                 }}
               >
-                {list.cat === "category" ? (
+                {task.cat === "category" ? (
                   // カテゴリ
                   <Box
                     sx={{
@@ -268,7 +324,7 @@ export default function App() {
                       paddingLeft: "0.5rem"
                     }}
                   >
-                    {list.name}
+                    {task.name}
                   </Box>
                 ) : (
                   // タスク
@@ -284,7 +340,7 @@ export default function App() {
                       paddingLeft: "1rem"
                     }}
                   >
-                    {list.name}
+                    {task.name}
                   </Box>
                 )}
 
@@ -299,7 +355,7 @@ export default function App() {
                     lineHeight: "1.25rem"
                   }}
                 >
-                  {list.start_date}
+                  {task.start_date}
                 </Box>
                 <Box
                   sx={{
@@ -312,7 +368,7 @@ export default function App() {
                     lineHeight: "1.25rem"
                   }}
                 >
-                  {list.end_date}
+                  {task.end_date}
                 </Box>
                 <Box
                   sx={{
@@ -325,7 +381,7 @@ export default function App() {
                     lineHeight: "1.25rem"
                   }}
                 >
-                  {list.incharge_user}
+                  {task.incharge_user}
                 </Box>
                 <Box
                   sx={{
@@ -337,7 +393,7 @@ export default function App() {
                     lineHeight: "1.25rem"
                   }}
                 >
-                  {list.percentage}%
+                  {task.percentage}%
                 </Box>
               </Box>
             ))}
@@ -345,7 +401,7 @@ export default function App() {
         </Box>
         <Box
           id="gantt-calendar"
-          sx={{ overflowX: "scroll", width: `${calendarViewWidth()}px` }}
+          sx={{ overflowX: "scroll", overflowY: 'hidden', width: `${calendarViewWidth()}px` }}
           ref={calendarRef}
         >
           <Box id="gantt-date" sx={{ height: "5rem" }}>
@@ -448,7 +504,21 @@ export default function App() {
               width: `${calendarViewWidth()}px`,
               height: `${calendarViewHeight()}px`
             }}
-          ></Box>
+          >
+            {taskBars.map((bar, index) => (
+              <Box key={index} style={bar.style} sx={{
+                borderRadius: "0.5rem",
+                position: 'absolute',
+                height: '1.25rem',
+                backgroundColor: '#FEF3C7',
+              }} >
+                {bar.task.cat === 'task' &&
+                  <Box sx={{ width: '100%', height: '100%' }}></Box>
+                }
+              </Box>
+            ))}
+
+          </Box>
         </Box>
       </Box>
     </Box>
@@ -493,8 +563,8 @@ const tasks = [
     id: 1,
     category_id: 1,
     name: "テスト1",
-    start_date: "2020-11-18",
-    end_date: "2020-11-20",
+    start_date: "2022-11-18",
+    end_date: "2022-11-20",
     incharge_user: "鈴木",
     percentage: 100
   },
@@ -502,8 +572,8 @@ const tasks = [
     id: 2,
     category_id: 1,
     name: "テスト2",
-    start_date: "2020-11-19",
-    end_date: "2020-11-23",
+    start_date: "2022-11-19",
+    end_date: "2022-11-23",
     incharge_user: "佐藤",
     percentage: 90
   },
@@ -511,8 +581,8 @@ const tasks = [
     id: 3,
     category_id: 1,
     name: "テスト3",
-    start_date: "2020-11-19",
-    end_date: "2020-12-04",
+    start_date: "2022-11-19",
+    end_date: "2022-12-04",
     incharge_user: "鈴木",
     percentage: 40
   },
@@ -520,8 +590,8 @@ const tasks = [
     id: 4,
     category_id: 1,
     name: "テスト4",
-    start_date: "2020-11-21",
-    end_date: "2020-11-30",
+    start_date: "2022-11-21",
+    end_date: "2022-11-30",
     incharge_user: "山下",
     percentage: 60
   },
@@ -529,8 +599,8 @@ const tasks = [
     id: 5,
     category_id: 1,
     name: "テスト5",
-    start_date: "2020-11-25",
-    end_date: "2020-12-04",
+    start_date: "2022-11-25",
+    end_date: "2022-12-04",
     incharge_user: "佐藤",
     percentage: 5
   },
@@ -538,8 +608,8 @@ const tasks = [
     id: 6,
     category_id: 2,
     name: "テスト6",
-    start_date: "2020-11-28",
-    end_date: "2020-12-08",
+    start_date: "2022-11-28",
+    end_date: "2022-12-08",
     incharge_user: "佐藤",
     percentage: 0
   }
