@@ -3,7 +3,7 @@ import React, {
   useState,
   useCallback,
   useRef,
-  useMemo
+  useMemo,
 } from "react";
 import { Box } from "@mui/material";
 import moment from "moment";
@@ -15,7 +15,7 @@ export default function App() {
     block_size: 30,
     block_number: 0,
     calendars: [],
-    today: moment()
+    today: moment(),
   });
 
   const [windowSize, setWindwoSize] = useState({
@@ -24,6 +24,14 @@ export default function App() {
     task_width: "",
     task_height: "",
     position_id: 0,
+  });
+
+  const [taskBarState, setTaskBarState] = useState({
+    dragging: false,
+    pageX: "",
+    element: "",
+    left: "",
+    task_id: "",
   });
 
   const taskRef = useRef();
@@ -52,7 +60,7 @@ export default function App() {
         month: start_month.month(), //month(), 0,1..11と表示
         start_block_number: block_number,
         calendar: days.length,
-        days: days
+        days: days,
       });
 
       start_month.add(1, "months");
@@ -62,7 +70,7 @@ export default function App() {
 
     setState((prev) => ({
       ...prev,
-      calendars: calendars
+      calendars: calendars,
     }));
 
     return block_number;
@@ -74,12 +82,12 @@ export default function App() {
       inner_width: window.innerWidth,
       inner_height: window.innerHeight,
       task_width: taskRef.current.offsetWidth,
-      task_height: taskRef.current.offsetHeight
-    }))
+      task_height: taskRef.current.offsetHeight,
+    }));
   };
 
   const windowSizeCheck = (event) => {
-    let height = lists.length - windowSize.position_id
+    let height = lists.length - windowSize.position_id;
     let position_id = windowSize.position_id;
     if (event.deltaY > 0 && height * 40 > calendarViewHeight()) {
       position_id++;
@@ -89,8 +97,18 @@ export default function App() {
     setWindwoSize((prev) => ({
       ...prev,
       position_id: position_id,
-    }))
-  }
+    }));
+  };
+
+  const mouseMove = (event) => {
+    if (taskBarState.dragging) {
+      console.log("mouseMove", taskBarState);
+      let diff = taskBarState.pageX - event.pageX;
+      taskBarState.element.style.left = `${
+        parseInt(taskBarState.left.replace("px", "")) - diff
+      }px`;
+    }
+  };
 
   /**
    * 本日の場所を設定するためにはstart_monthの1日から本日までに何日あるかを計算
@@ -112,6 +130,7 @@ export default function App() {
     todayPosition();
     window.addEventListener("resize", getWindowSize);
     window.addEventListener("wheel", windowSizeCheck);
+    window.addEventListener("mousemove", mouseMove);
   }, [getCalendar]);
 
   /**
@@ -141,11 +160,13 @@ export default function App() {
     return lists;
   }, []);
 
-  
   const displayTasks = useMemo(() => {
     let display_task_number = Math.floor(calendarViewHeight() / 40);
-    return lists.slice(windowSize.position_id, windowSize.position_id + display_task_number);
-  })
+    return lists.slice(
+      windowSize.position_id,
+      windowSize.position_id + display_task_number
+    );
+  });
 
   const taskBars = useMemo(() => {
     let start_date = moment(state.start_month);
@@ -154,31 +175,45 @@ export default function App() {
     let between;
     let start;
     let style;
-    return displayTasks.map(task => {
-      style = {}
-      if (task.cat === 'task') {
+    return displayTasks.map((task) => {
+      style = {};
+      if (task.cat === "task") {
         let date_from = moment(task.start_date);
         let date_to = moment(task.end_date);
-        between = date_to.diff(date_from, 'days');
+        between = date_to.diff(date_from, "days");
         between++;
-        start = date_from.diff(start_date, 'days');
+        start = date_from.diff(start_date, "days");
         left = start * state.block_size;
         style = {
           top: `${top}px`,
           left: `${left}px`,
           width: `${state.block_size * between}px`,
-        }
+        };
       }
       // listsをループする毎にtopに40pxを足して、各タスクバーが確保した高さの10px下からタスクバーを表示する
       top = top + 40;
       return {
         style,
-        task
-      }
-    })
-  })
+        task,
+      };
+    });
+  });
 
-  console.log({taskBars})
+  const handleMouseDown = useCallback((event, task) => {
+    setTaskBarState({
+      dragging: true,
+      pageX: event.pageX,
+      element: event.target,
+      left: event.target.style.left,
+      task_id: task.id,
+    });
+
+    console.log("handleMouseDown", task);
+  }, []);
+
+  useEffect(() => {
+    console.log({ taskBarState });
+  }, [taskBarState]);
 
   return (
     <Box id="app">
@@ -188,7 +223,7 @@ export default function App() {
           height: "3rem",
           p: "0.5rem",
           display: "flex",
-          alignItems: "center"
+          alignItems: "center",
         }}
       >
         <Box
@@ -196,7 +231,7 @@ export default function App() {
           sx={{
             fontSize: "1.25rem",
             lineHeight: "1.75rem",
-            fontWeight: "700"
+            fontWeight: "700",
           }}
         >
           ガントチャート
@@ -212,7 +247,7 @@ export default function App() {
               alignItems: "center",
               backgroundColor: "#059669",
               height: "5rem",
-              color: "white"
+              color: "white",
             }}
           >
             <Box
@@ -227,7 +262,7 @@ export default function App() {
                 fontSize: "0.75rem",
                 lineHeight: "1rem",
                 width: "12rem",
-                height: "100%"
+                height: "100%",
               }}
             >
               タスク
@@ -244,7 +279,7 @@ export default function App() {
                 fontSize: "0.75rem",
                 lineHeight: "1rem",
                 width: "6rem",
-                height: "100%"
+                height: "100%",
               }}
             >
               開始日
@@ -261,7 +296,7 @@ export default function App() {
                 fontSize: "0.75rem",
                 lineHeight: "1rem",
                 width: "6rem",
-                height: "100%"
+                height: "100%",
               }}
             >
               完了期限日
@@ -278,7 +313,7 @@ export default function App() {
                 fontSize: "0.75rem",
                 lineHeight: "1rem",
                 width: "4rem",
-                height: "100%"
+                height: "100%",
               }}
             >
               担当
@@ -295,20 +330,23 @@ export default function App() {
                 fontSize: "0.75rem",
                 lineHeight: "1rem",
                 width: "3rem",
-                height: "100%"
+                height: "100%",
               }}
             >
               進捗
             </Box>
           </Box>
-          <Box id="gantt-task-list" sx={{ overflowY: 'hidden', height: `${calendarViewHeight()}px` }}>
+          <Box
+            id="gantt-task-list"
+            sx={{ overflowY: "hidden", height: `${calendarViewHeight()}px` }}
+          >
             {displayTasks.map((task, index) => (
               <Box
                 key={index}
                 sx={{
                   display: "flex",
                   height: "2.5rem",
-                  borderBottomWidth: "1px"
+                  borderBottomWidth: "1px",
                 }}
               >
                 {task.cat === "category" ? (
@@ -321,7 +359,7 @@ export default function App() {
                       width: "100%",
                       fontSize: "0.875rem",
                       lineHeight: "1.25rem",
-                      paddingLeft: "0.5rem"
+                      paddingLeft: "0.5rem",
                     }}
                   >
                     {task.name}
@@ -337,7 +375,7 @@ export default function App() {
                       width: "12rem",
                       fontSize: "0.875rem",
                       lineHeight: "1.25rem",
-                      paddingLeft: "1rem"
+                      paddingLeft: "1rem",
                     }}
                   >
                     {task.name}
@@ -352,7 +390,7 @@ export default function App() {
                     justifyContent: "center",
                     width: "6rem",
                     fontSize: "0.875rem",
-                    lineHeight: "1.25rem"
+                    lineHeight: "1.25rem",
                   }}
                 >
                   {task.start_date}
@@ -365,7 +403,7 @@ export default function App() {
                     justifyContent: "center",
                     width: "6rem",
                     fontSize: "0.875rem",
-                    lineHeight: "1.25rem"
+                    lineHeight: "1.25rem",
                   }}
                 >
                   {task.end_date}
@@ -378,7 +416,7 @@ export default function App() {
                     justifyContent: "center",
                     width: "4rem",
                     fontSize: "0.875rem",
-                    lineHeight: "1.25rem"
+                    lineHeight: "1.25rem",
                   }}
                 >
                   {task.incharge_user}
@@ -390,7 +428,7 @@ export default function App() {
                     justifyContent: "center",
                     width: "3rem",
                     fontSize: "0.875rem",
-                    lineHeight: "1.25rem"
+                    lineHeight: "1.25rem",
                   }}
                 >
                   {task.percentage}%
@@ -401,7 +439,11 @@ export default function App() {
         </Box>
         <Box
           id="gantt-calendar"
-          sx={{ overflowX: "scroll", overflowY: 'hidden', width: `${calendarViewWidth()}px` }}
+          sx={{
+            overflowX: "scroll",
+            overflowY: "hidden",
+            width: `${calendarViewWidth()}px`,
+          }}
           ref={calendarRef}
         >
           <Box id="gantt-date" sx={{ height: "5rem" }}>
@@ -427,7 +469,7 @@ export default function App() {
                     alignItems: "center",
                     justifyContent: "center",
                     width: `${calendar.calendar * state.block_size}px`,
-                    left: `${calendar.start_block_number * state.block_size}px`
+                    left: `${calendar.start_block_number * state.block_size}px`,
                   }}
                 >
                   {calendar.date}
@@ -464,7 +506,7 @@ export default function App() {
                           calendar.year === state.today.year() &&
                           calendar.month === state.today.month() &&
                           day.day === state.today.date() &&
-                          "#ffffff"
+                          "#ffffff",
                       }}
                     >
                       <Box component="span">{day.day}</Box>
@@ -489,7 +531,7 @@ export default function App() {
                         height: `${calendarViewHeight()}px`,
                         backgroundColor:
                           (day.dayOfWeek === "土" && "#DBEAFE") ||
-                          (day.dayOfWeek === "日" && "#FEE2E2")
+                          (day.dayOfWeek === "日" && "#FEE2E2"),
                       }}
                     ></Box>
                   ))}
@@ -502,22 +544,36 @@ export default function App() {
             sx={{
               position: "relative",
               width: `${calendarViewWidth()}px`,
-              height: `${calendarViewHeight()}px`
+              height: `${calendarViewHeight()}px`,
             }}
           >
             {taskBars.map((bar, index) => (
-              <Box key={index} style={bar.style} sx={{
-                borderRadius: "0.5rem",
-                position: 'absolute',
-                height: '1.25rem',
-                backgroundColor: '#FEF3C7',
-              }} >
-                {bar.task.cat === 'task' &&
-                  <Box sx={{ width: '100%', height: '100%' }}></Box>
-                }
+              <Box
+                key={index}
+                style={bar.style}
+                sx={{
+                  borderRadius: "0.5rem",
+                  position: "absolute",
+                  height: "1.25rem",
+                  backgroundColor: "#FEF3C7",
+                }}
+              >
+                {bar.task.cat === "task" && (
+                  <Box
+                    sx={{ width: "100%", height: "100%" }}
+                    onMouseDown={(e) => handleMouseDown(e, bar.task)}
+                  >
+                    <Box
+                      sx={{
+                        width: "100%",
+                        height: "100%",
+                        pointerEvents: "none",
+                      }}
+                    ></Box>
+                  </Box>
+                )}
               </Box>
             ))}
-
           </Box>
         </Box>
       </Box>
@@ -537,7 +593,7 @@ function getDays(year, month, block_number) {
     days.push({
       day: date.date(),
       dayOfWeek: dayOfWeek[date.day()],
-      block_number
+      block_number,
     });
     date.add(1, "day");
     block_number++;
@@ -549,13 +605,13 @@ const categories = [
   {
     id: 1,
     name: "テストA",
-    collapsed: false
+    collapsed: false,
   },
   {
     id: 2,
     name: "テストB",
-    collapsed: false
-  }
+    collapsed: false,
+  },
 ];
 
 const tasks = [
@@ -566,7 +622,7 @@ const tasks = [
     start_date: "2022-11-18",
     end_date: "2022-11-20",
     incharge_user: "鈴木",
-    percentage: 100
+    percentage: 100,
   },
   {
     id: 2,
@@ -575,7 +631,7 @@ const tasks = [
     start_date: "2022-11-19",
     end_date: "2022-11-23",
     incharge_user: "佐藤",
-    percentage: 90
+    percentage: 90,
   },
   {
     id: 3,
@@ -584,7 +640,7 @@ const tasks = [
     start_date: "2022-11-19",
     end_date: "2022-12-04",
     incharge_user: "鈴木",
-    percentage: 40
+    percentage: 40,
   },
   {
     id: 4,
@@ -593,7 +649,7 @@ const tasks = [
     start_date: "2022-11-21",
     end_date: "2022-11-30",
     incharge_user: "山下",
-    percentage: 60
+    percentage: 60,
   },
   {
     id: 5,
@@ -602,7 +658,7 @@ const tasks = [
     start_date: "2022-11-25",
     end_date: "2022-12-04",
     incharge_user: "佐藤",
-    percentage: 5
+    percentage: 5,
   },
   {
     id: 6,
@@ -611,6 +667,6 @@ const tasks = [
     start_date: "2022-11-28",
     end_date: "2022-12-08",
     incharge_user: "佐藤",
-    percentage: 0
-  }
+    percentage: 0,
+  },
 ];
