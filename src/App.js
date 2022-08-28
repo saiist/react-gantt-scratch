@@ -18,6 +18,8 @@ export default function App() {
     today: moment()
   });
 
+  const [tasksState, setTasksState] = useState(getTasks());
+
   const [windowSizeState, setWindwoSizeState] = useState({
     inner_width: "",
     inner_height: "",
@@ -31,12 +33,17 @@ export default function App() {
     pageX: "",
     element: "",
     left: "",
-    task_id: ""
+    task_id: "",
+    width: "",
+    leftResizing: false,
+    rightResizing: false
   });
 
   const taskRef = useRef(null);
   const calendarRef = useRef(null);
 
+  const tasksStateRef = useRef(null);
+  tasksStateRef.current = tasksState;
   const windowSizeStateRef = useRef(null);
   windowSizeStateRef.current = windowSizeState;
   const taskBarStateRef = useRef(null);
@@ -103,14 +110,14 @@ export default function App() {
     let lists = [];
     categories.forEach((category) => {
       lists.push({ cat: "category", ...category });
-      tasks.forEach((task) => {
+      tasksState.forEach((task) => {
         if (task.category_id === category.id) {
           lists.push({ cat: "task", ...task });
         }
       });
     });
     return lists;
-  }, []);
+  }, [tasksState]);
 
   /**
    * タスクバー領域の高さを計算
@@ -155,12 +162,73 @@ export default function App() {
     }
   }, []);
 
-  const stopDrag = useCallback(() => {
-    setTaskBarState({
-      ...taskBarStateRef.current,
-      dragging: false
-    });
-  }, []);
+  const stopDrag = useCallback(
+    (event) => {
+      if (taskBarStateRef.current.dragging) {
+        let diff = taskBarStateRef.current.pageX - event.pageX;
+        let days = Math.ceil(diff / state.block_size);
+        if (days !== 0) {
+          setTasksState(
+            tasksStateRef.current.map((task) => {
+              if (taskBarStateRef.current.task_id === task.id) {
+                let start_date = moment(task.start_date).add(-days, "days");
+                let end_date = moment(task.end_date).add(-days, "days");
+                return {
+                  ...task,
+                  start_date: start_date.format("YYYY-MM-DD"),
+                  end_date: end_date.format("YYYY-MM-DD")
+                };
+              } else {
+                return task;
+              }
+            })
+          );
+        } else {
+          const element = taskBarStateRef.current.element;
+          element.style.left = `${taskBarStateRef.current.left.replace(
+            "px",
+            ""
+          )}px`;
+
+          setTaskBarState({
+            ...taskBarStateRef.current,
+            element: element
+          });
+        }
+      }
+      setTaskBarState({
+        ...taskBarStateRef.current,
+        dragging: false
+      });
+    },
+    [state.block_size]
+  );
+
+  const mouseResize = useCallback(
+    (event) => {
+      if (taskBarStateRef.current.leftResizing) {
+        console.log({ taskBarStateRef });
+        let diff = taskBarStateRef.current.pageX - event.pageX;
+        if (
+          Number(taskBarStateRef.current.width.replace("px", "")) + diff >
+          state.block_size
+        ) {
+          const element = taskBarStateRef.current.element;
+          element.style.width = `${
+            Number(taskBarStateRef.current.width.replace("px", "")) + diff
+          }px`;
+          element.style.left = `${
+            taskBarStateRef.current.left.replace("px", "") - diff
+          }px`;
+          setTaskBarState({
+            ...taskBarStateRef.current,
+            element: element
+          });
+        }
+      }
+    },
+    [state.block_size]
+  );
 
   /**
    * 本日の場所を設定するためにはstart_monthの1日から本日までに何日あるかを計算
@@ -184,13 +252,15 @@ export default function App() {
     window.addEventListener("wheel", windowSizeCheck);
     window.addEventListener("mousemove", startDrag);
     window.addEventListener("mouseup", stopDrag);
+    window.addEventListener("mousemove", mouseResize);
   }, [
     getCalendar,
     getWindowSize,
     startDrag,
     stopDrag,
     todayPosition,
-    windowSizeCheck
+    windowSizeCheck,
+    mouseResize
   ]);
 
   const displayTasks = useMemo(() => {
@@ -232,15 +302,39 @@ export default function App() {
     });
   }, [displayTasks, state.block_size, state.start_month]);
 
-  const handleMouseDown = useCallback((event, task) => {
-    setTaskBarState({
-      dragging: true,
-      pageX: event.pageX,
-      element: event.target,
-      left: event.target.style.left,
-      task_id: task.id
-    });
-  }, []);
+  const handleMouseDownTask = useCallback(
+    (event, task) => {
+      setTaskBarState({
+        ...taskBarState,
+        dragging: true,
+        pageX: event.pageX,
+        element: event.target,
+        left: event.target.style.left,
+        task_id: task.id
+      });
+    },
+    [taskBarState]
+  );
+
+  const handleMouseDownResize = useCallback(
+    (event, task, direction) => {
+      event.preventDefault();
+
+      console.log("handleMouseDownResize");
+
+      setTaskBarState({
+        ...taskBarState,
+        leftResizing: direction === "left",
+        rightResizing: direction === "right",
+        pageX: event.pageX,
+        width: event.target.parentElement.style.width,
+        left: event.target.parentElement.style.left,
+        element: event.target.parentElement,
+        task_id: task.id
+      });
+    },
+    [taskBarState]
+  );
 
   return (
     <Box id="app">
@@ -586,7 +680,7 @@ export default function App() {
                       height: "1.25rem",
                       backgroundColor: "#FEF3C7"
                     }}
-                    onMouseDown={(e) => handleMouseDown(e, bar.task)}
+                    onMouseDown={(e) => handleMouseDownTask(e, bar.task)}
                   >
                     <Box
                       sx={{
@@ -594,7 +688,40 @@ export default function App() {
                         height: "100%",
                         pointerEvents: "none"
                       }}
-                    ></Box>
+                    >
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          width: "0.5rem",
+                          height: "0.5rem",
+                          backgroundColor: "#D1D5DB",
+                          borderWidth: "1px",
+                          borderColor: "#000000",
+                          top: "6px",
+                          left: "-6px",
+                          cursor: "col-resize"
+                        }}
+                        onMouseDown={(e) =>
+                          handleMouseDownResize(e, bar.task, "left")
+                        }
+                      />
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          width: "0.5rem",
+                          height: "0.5rem",
+                          backgroundColor: "#D1D5DB",
+                          borderWidth: "1px",
+                          borderColor: "#000000",
+                          top: "6px",
+                          right: "-6px",
+                          cursor: "col-resize"
+                        }}
+                        onMouseDown={(e) =>
+                          handleMouseDownResize(e, bar.task, "right")
+                        }
+                      />
+                    </Box>
                   </Box>
                 )}
               </Box>
@@ -639,7 +766,7 @@ const categories = [
   }
 ];
 
-const tasks = [
+const getTasks = () => [
   {
     id: 1,
     category_id: 1,
