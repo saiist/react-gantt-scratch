@@ -12,7 +12,6 @@
     "@emotion/styled": "11.10.0",
     "@emotion/weak-memoize": "0.3.0",
     "@mui/material": "5.9.2",
-    "eslint": "^8.23.0",
     "moment": "2.29.4",
     "react": "18.0.0",
     "react-dom": "18.0.0",
