@@ -196,9 +196,100 @@ export default function App() {
           });
         }
       }
+      if (taskBarStateRef.current.leftResizing) {
+        let diff = taskBarStateRef.current.pageX - event.pageX;
+        let days = Math.ceil(diff / state.block_size);
+        if (days !== 0) {
+          setTasksState(
+            tasksStateRef.current.map((task) => {
+              if (taskBarStateRef.current.task_id === task.id) {
+                let start_date = moment(task.start_date).add(-days, "days");
+                let end_date = moment(task.end_date);
+                if (end_date.diff(start_date, "days") <= 0) {
+                  return {
+                    ...task,
+                    start_date: end_date.format("YYYY-MM-DD"),
+                  };
+                } else {
+                  return {
+                    ...task,
+                    start_date: start_date.format("YYYY-MM-DD"),
+                  };
+                }
+              } else {
+                return task;
+              }
+            })
+          );
+        } else {
+          const element = taskBarStateRef.current.element;
+          element.style.width = taskBarStateRef.current.width;
+          element.style.left = `${taskBarStateRef.current.left.replace(
+            "px",
+            ""
+          )}px`;
+          setTaskBarState({
+            ...taskBarStateRef.current,
+            element: element,
+          });
+        }
+      }
+      if (taskBarStateRef.current.rightResizing) {
+        let diff = taskBarStateRef.current.pageX - event.pageX;
+        let days = Math.ceil(diff / state.block_size);
+        if (days === 1) {
+          const element = taskBarStateRef.current.element;
+          element.style.width = `${Number(
+            taskBarStateRef.current.width.replace("px", "")
+          )}px`;
+          setTaskBarState({
+            ...taskBarStateRef.current,
+            element: element,
+          });
+        } else if (days <= 2) {
+          days--;
+          setTasksState(
+            tasksStateRef.current.map((task) => {
+              if (taskBarStateRef.current.task_id === task.id) {
+                let end_date = moment(task.end_date).add(-days, "days");
+                return {
+                  ...task,
+                  end_date: end_date.format("YYYY-MM-DD"),
+                };
+              } else {
+                return task;
+              }
+            })
+          );
+        } else {
+          setTasksState(
+            tasksStateRef.current.map((task) => {
+              if (taskBarStateRef.current.task_id === task.id) {
+                let start_date = moment(task.start_date);
+                let end_date = moment(task.end_date).add(-days, "days");
+                if (end_date.diff(start_date, "days") < 0) {
+                  return {
+                    ...task,
+                    end_date: start_date.format("YYYY-MM-DD"),
+                  };
+                } else {
+                  return {
+                    ...task,
+                    end_date: end_date.format("YYYY-MM-DD"),
+                  };
+                }
+              } else {
+                return task;
+              }
+            })
+          );
+        }
+      }
       setTaskBarState({
         ...taskBarStateRef.current,
         dragging: false,
+        leftResizing: false,
+        rightResizing: false,
       });
     },
     [state.block_size]
@@ -207,7 +298,6 @@ export default function App() {
   const mouseResize = useCallback(
     (event) => {
       if (taskBarStateRef.current.leftResizing) {
-        console.log({ taskBarStateRef });
         let diff = taskBarStateRef.current.pageX - event.pageX;
         if (
           Number(taskBarStateRef.current.width.replace("px", "")) + diff >
@@ -219,6 +309,22 @@ export default function App() {
           }px`;
           element.style.left = `${
             taskBarStateRef.current.left.replace("px", "") - diff
+          }px`;
+          setTaskBarState({
+            ...taskBarStateRef.current,
+            element: element,
+          });
+        }
+      }
+      if (taskBarStateRef.current.rightResizing) {
+        let diff = taskBarStateRef.current.pageX - event.pageX;
+        if (
+          Number(taskBarStateRef.current.width.replace("px", "")) - diff >
+          state.block_size
+        ) {
+          const element = taskBarStateRef.current.element;
+          element.style.width = `${
+            Number(taskBarStateRef.current.width.replace("px", "")) - diff
           }px`;
           setTaskBarState({
             ...taskBarStateRef.current,
@@ -318,10 +424,7 @@ export default function App() {
 
   const handleMouseDownResize = useCallback(
     (event, task, direction) => {
-      event.preventDefault();
-
-      console.log("handleMouseDownResize");
-
+      event.stopPropagation();
       setTaskBarState({
         ...taskBarState,
         leftResizing: direction === "left",
@@ -335,6 +438,10 @@ export default function App() {
     },
     [taskBarState]
   );
+
+  useEffect(() => {
+    console.log({ taskBarState });
+  }, [taskBarState]);
 
   return (
     <Box id="app">
@@ -688,40 +795,39 @@ export default function App() {
                         height: "100%",
                         pointerEvents: "none",
                       }}
-                    >
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          width: "0.5rem",
-                          height: "0.5rem",
-                          backgroundColor: "#D1D5DB",
-                          borderWidth: "1px",
-                          borderColor: "#000000",
-                          top: "6px",
-                          left: "-6px",
-                          cursor: "col-resize",
-                        }}
-                        onMouseDown={(e) =>
-                          handleMouseDownResize(e, bar.task, "left")
-                        }
-                      />
-                      <Box
-                        sx={{
-                          position: "absolute",
-                          width: "0.5rem",
-                          height: "0.5rem",
-                          backgroundColor: "#D1D5DB",
-                          borderWidth: "1px",
-                          borderColor: "#000000",
-                          top: "6px",
-                          right: "-6px",
-                          cursor: "col-resize",
-                        }}
-                        onMouseDown={(e) =>
-                          handleMouseDownResize(e, bar.task, "right")
-                        }
-                      />
-                    </Box>
+                    ></Box>
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        width: "0.5rem",
+                        height: "0.5rem",
+                        backgroundColor: "#D1D5DB",
+                        borderWidth: "1px",
+                        borderColor: "#000000",
+                        top: "6px",
+                        left: "-6px",
+                        cursor: "col-resize",
+                      }}
+                      onMouseDown={(e) =>
+                        handleMouseDownResize(e, bar.task, "left")
+                      }
+                    />
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        width: "0.5rem",
+                        height: "0.5rem",
+                        backgroundColor: "#D1D5DB",
+                        borderWidth: "1px",
+                        borderColor: "#000000",
+                        top: "6px",
+                        right: "-6px",
+                        cursor: "col-resize",
+                      }}
+                      onMouseDown={(e) =>
+                        handleMouseDownResize(e, bar.task, "right")
+                      }
+                    />
                   </Box>
                 )}
               </Box>
