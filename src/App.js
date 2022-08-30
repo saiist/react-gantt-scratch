@@ -39,6 +39,17 @@ export default function App() {
     rightResizing: false,
   });
 
+  const [dragTaskState, setDragTaskState] = useState({
+    cat: "",
+    id: null,
+    category_id: null,
+    name: "",
+    start_date: "",
+    end_date: "",
+    incharge_user: "",
+    percentage: null,
+  })
+
   const taskRef = useRef(null);
   const calendarRef = useRef(null);
 
@@ -116,6 +127,7 @@ export default function App() {
         }
       });
     });
+    console.log({ lists })
     return lists;
   }, [tasksState]);
 
@@ -152,9 +164,8 @@ export default function App() {
     if (taskBarStateRef.current.dragging) {
       const diff = taskBarStateRef.current.pageX - event.pageX;
       const element = taskBarStateRef.current.element;
-      element.style.left = `${
-        Number(taskBarStateRef.current.left.replace("px", "")) - diff
-      }px`;
+      element.style.left = `${Number(taskBarStateRef.current.left.replace("px", "")) - diff
+        }px`;
       setTaskBarState({
         ...taskBarStateRef.current,
         element: element,
@@ -304,12 +315,10 @@ export default function App() {
           state.block_size
         ) {
           const element = taskBarStateRef.current.element;
-          element.style.width = `${
-            Number(taskBarStateRef.current.width.replace("px", "")) + diff
-          }px`;
-          element.style.left = `${
-            taskBarStateRef.current.left.replace("px", "") - diff
-          }px`;
+          element.style.width = `${Number(taskBarStateRef.current.width.replace("px", "")) + diff
+            }px`;
+          element.style.left = `${taskBarStateRef.current.left.replace("px", "") - diff
+            }px`;
           setTaskBarState({
             ...taskBarStateRef.current,
             element: element,
@@ -323,9 +332,8 @@ export default function App() {
           state.block_size
         ) {
           const element = taskBarStateRef.current.element;
-          element.style.width = `${
-            Number(taskBarStateRef.current.width.replace("px", "")) - diff
-          }px`;
+          element.style.width = `${Number(taskBarStateRef.current.width.replace("px", "")) - diff
+            }px`;
           setTaskBarState({
             ...taskBarStateRef.current,
             element: element,
@@ -439,9 +447,42 @@ export default function App() {
     [taskBarState]
   );
 
-  useEffect(() => {
-    console.log({ taskBarState });
-  }, [taskBarState]);
+  const handleDragStartTask = useCallback((event, dragTask) => {
+    setDragTaskState(dragTask)
+  }, [])
+
+  const handleDragTaskOver = useCallback((event, overTask) => {
+    event.preventDefault();
+
+    if (dragTaskState.cat !== 'category') {
+      if (overTask.cat === 'category') {
+        setTasksState(
+          tasksState.map((task) => {
+            if (task.id === dragTaskState.id) {
+              return { ...task, category_id: overTask.id }
+            } else {
+              return task;
+            }
+          })
+        )
+      } else {
+        let deleteIndex;
+        let addIndex;
+        if (overTask.id !== dragTaskState.id) {
+          tasksState.map((task, index) => { if (task.id === dragTaskState.id) deleteIndex = index })
+          tasksState.map((task, index) => { if (task.id === overTask.id) addIndex = index })
+
+          tasksState.splice(deleteIndex, 1)
+          dragTaskState.category_id = overTask.category_id
+          tasksState.splice(addIndex, 0, dragTaskState)
+
+          setTasksState(tasksState)
+        }
+      }
+    }
+  }, [dragTaskState, tasksState])
+
+  useEffect(() => { console.log({ tasksState }, [tasksState]) })
 
   return (
     <Box id="app">
@@ -576,6 +617,9 @@ export default function App() {
                   height: "2.5rem",
                   borderBottomWidth: "1px",
                 }}
+                draggable={true}
+                onDragStart={(e) => handleDragStartTask(e, task)}
+                onDragOver={(e) => handleDragTaskOver(e, task)}
               >
                 {task.cat === "category" ? (
                   // カテゴリ
