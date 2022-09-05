@@ -476,13 +476,11 @@ export default function App() {
           dragTaskState.category_id = overTask.category_id
           tasksState.splice(addIndex, 0, dragTaskState)
 
-          setTasksState(tasksState)
+          setTasksState(tasksState.map((s) => s))
         }
       }
     }
   }, [dragTaskState, tasksState])
-
-  useEffect(() => { console.log({ tasksState }, [tasksState]) })
 
   return (
     <Box id="app">
