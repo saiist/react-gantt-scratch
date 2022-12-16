@@ -160,12 +160,16 @@ export default function App() {
     [calendarViewHeight, lists.length]
   );
 
+  // mousemove イベント
+  // マウスの移動に合わせてタスクバーを移動させる
   const startDrag = useCallback((event) => {
     if (taskBarStateRef.current.dragging) {
       const diff = taskBarStateRef.current.pageX - event.pageX;
       const element = taskBarStateRef.current.element;
       element.style.left = `${Number(taskBarStateRef.current.left.replace("px", "")) - diff
         }px`;
+
+      // クリックされているタスクバーの座標から、マウスの現在地の座標の差分の距離を適用する
       setTaskBarState({
         ...taskBarStateRef.current,
         element: element,
@@ -173,12 +177,18 @@ export default function App() {
     }
   }, []);
 
+  // mouseup イベント
+  // マウスのクリックを外した際にマウスの移動との同期を解除する（ドラッグ終了時イベント）
   const stopDrag = useCallback(
     (event) => {
       if (taskBarStateRef.current.dragging) {
+        // タスクバーのドラッグ終了時
+
+        // block_size で割ることで移動が何日分進んだかを計算する
         let diff = taskBarStateRef.current.pageX - event.pageX;
         let days = Math.ceil(diff / state.block_size);
         if (days !== 0) {
+          // タスクバーの移動に合わせて開始日、終了日を更新する
           setTasksState(
             tasksStateRef.current.map((task) => {
               if (taskBarStateRef.current.task_id === task.id) {
@@ -195,12 +205,14 @@ export default function App() {
             })
           );
         } else {
+          // 移動幅が小さい場合は days = 0 となる
           const element = taskBarStateRef.current.element;
           element.style.left = `${taskBarStateRef.current.left.replace(
             "px",
             ""
           )}px`;
 
+          // 元の位置に戻す
           setTaskBarState({
             ...taskBarStateRef.current,
             element: element,
@@ -208,15 +220,20 @@ export default function App() {
         }
       }
       if (taskBarStateRef.current.leftResizing) {
+        // 左方向へのリサイズ終了時
+
+        // block_size で割ることで何日分リサイズがあったかを計算する
         let diff = taskBarStateRef.current.pageX - event.pageX;
         let days = Math.ceil(diff / state.block_size);
         if (days !== 0) {
+          // 拡大リサイズする場合
           setTasksState(
             tasksStateRef.current.map((task) => {
               if (taskBarStateRef.current.task_id === task.id) {
                 let start_date = moment(task.start_date).add(-days, "days");
                 let end_date = moment(task.end_date);
                 if (end_date.diff(start_date, "days") <= 0) {
+                  // 開始日が終了日より大きい場合はあり得ないので、同日を設定する
                   return {
                     ...task,
                     start_date: end_date.format("YYYY-MM-DD"),
@@ -239,6 +256,8 @@ export default function App() {
             "px",
             ""
           )}px`;
+
+          // リサイズ幅が小さい場合は元の位置に戻す
           setTaskBarState({
             ...taskBarStateRef.current,
             element: element,
@@ -246,18 +265,23 @@ export default function App() {
         }
       }
       if (taskBarStateRef.current.rightResizing) {
+        // 右方向へのリサイズ終了時
         let diff = taskBarStateRef.current.pageX - event.pageX;
         let days = Math.ceil(diff / state.block_size);
         if (days === 1) {
+          // 拡大リサイズする場合（リサイズ幅が小さい場合）
           const element = taskBarStateRef.current.element;
           element.style.width = `${Number(
             taskBarStateRef.current.width.replace("px", "")
           )}px`;
+
+          // リサイズ幅が小さい場合は元の位置に戻す
           setTaskBarState({
             ...taskBarStateRef.current,
             element: element,
           });
         } else if (days <= 2) {
+          // 拡大リサイズする場合
           days--;
           setTasksState(
             tasksStateRef.current.map((task) => {
@@ -273,12 +297,14 @@ export default function App() {
             })
           );
         } else {
+          // 縮小リサイズする場合
           setTasksState(
             tasksStateRef.current.map((task) => {
               if (taskBarStateRef.current.task_id === task.id) {
                 let start_date = moment(task.start_date);
                 let end_date = moment(task.end_date).add(-days, "days");
                 if (end_date.diff(start_date, "days") < 0) {
+                  // 開始日が終了日より大きい場合はあり得ないので、同日を設定する
                   return {
                     ...task,
                     end_date: start_date.format("YYYY-MM-DD"),
@@ -296,6 +322,7 @@ export default function App() {
           );
         }
       }
+
       setTaskBarState({
         ...taskBarStateRef.current,
         dragging: false,
@@ -310,10 +337,13 @@ export default function App() {
     (event) => {
       if (taskBarStateRef.current.leftResizing) {
         let diff = taskBarStateRef.current.pageX - event.pageX;
+
         if (
           Number(taskBarStateRef.current.width.replace("px", "")) + diff >
           state.block_size
         ) {
+
+          // タスクバーの幅が一日分よりも小さくならなければ、リサイズする
           const element = taskBarStateRef.current.element;
           element.style.width = `${Number(taskBarStateRef.current.width.replace("px", "")) + diff
             }px`;
@@ -472,6 +502,8 @@ export default function App() {
           tasksState.map((task, index) => { if (task.id === dragTaskState.id) deleteIndex = index })
           tasksState.map((task, index) => { if (task.id === overTask.id) addIndex = index })
 
+          // タスクの入れ替え
+          // ドラッグしたタスクを元の場所から削除し、ドラッグオーバーしたタスクがいた、タスクリストの場所に挿入する
           tasksState.splice(deleteIndex, 1)
           dragTaskState.category_id = overTask.category_id
           tasksState.splice(addIndex, 0, dragTaskState)
